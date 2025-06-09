@@ -41,6 +41,10 @@ dependencies:
   flutter_secure_storage: ^10.0.0-beta.4
   shared_preferences: ^2.2.2
 
+  # Cryptography
+  cryptography: ^2.7.0
+  cryptography_flutter: ^2.3.0
+
   # Bitcoin & Lightning
   bdk_flutter: ^0.31.2
   ldk_node: ^0.3.0

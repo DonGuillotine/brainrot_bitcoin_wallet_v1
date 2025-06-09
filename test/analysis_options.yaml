@@ -1,0 +1,13 @@
+# This file configures the analyzer for the test/ directory.
+#
+# It inherits all the rules from the root analysis_options.yaml file
+# and then overrides a specific rule for test files.
+
+# First, include the main configuration file to inherit all its settings.
+include: ../analysis_options.yaml
+
+linter:
+  rules:
+    # Disable the 'avoid_print' rule specifically for files in the test/ directory.
+    # This allows using print() for debugging during test runs without lint warnings.
+    avoid_print: false
