@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../main.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/home/home_screen.dart';
@@ -18,6 +19,7 @@ import '../theme/app_theme.dart';
 /// Main app router configuration
 class AppRouter {
   static final router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/',
     debugLogDiagnostics: true,
 
