@@ -25,6 +25,7 @@ import 'services/logger_service.dart';
 
 // Global instances
 late final Logger logger;
+late final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 late final FlutterSecureStorage secureStorage;
 late final SharedPreferences prefs;
 

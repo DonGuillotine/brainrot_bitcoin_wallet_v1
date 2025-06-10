@@ -6,6 +6,7 @@ import 'network/network_service.dart';
 import 'network/price_service.dart';
 import 'haptic_service.dart';
 import 'sound_service.dart';
+import 'bitcoin/bdk_service.dart';
 import '../providers/theme_provider.dart';
 
 /// Service locator for dependency injection
@@ -22,6 +23,7 @@ class ServiceLocator {
   late final PriceService priceService;
   late final HapticService hapticService;
   late final SoundService soundService;
+  late final BdkService bdkService;
 
   // Initialization flag
   bool _initialized = false;
@@ -41,6 +43,7 @@ class ServiceLocator {
       priceService = PriceService(networkService);
       hapticService = HapticService(themeProvider);
       soundService = SoundService(themeProvider);
+      bdkService = BdkService(encryptionService, storageService);
 
       // Initialize storage
       await storageService.initialize();
