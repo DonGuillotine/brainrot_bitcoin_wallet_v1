@@ -6,7 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
+import 'services/service_locator.dart';
 
 // Providers
 import 'providers/app_state_provider.dart';
@@ -21,7 +21,6 @@ import 'routes/app_router.dart';
 import 'theme/app_theme.dart';
 
 // Services
-import 'services/secure_storage_service.dart';
 import 'services/logger_service.dart';
 
 // Global instances
@@ -66,7 +65,9 @@ Future<void> initializeApp() async {
 
   // Initialize secure storage
   secureStorage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(),
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),
@@ -111,6 +112,11 @@ class BrainrotWalletApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
+          // Initialize services with theme provider
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await services.initialize(themeProvider);
+          });
+
           return MaterialApp.router(
             title: 'Brainrot Wallet',
             debugShowCheckedModeBanner: false,

@@ -2,12 +2,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:isolate';
-import 'package:cryptography/cryptography.dart';
-import 'package:cryptography_flutter/cryptography_flutter.dart';
+import 'package:cryptography_plus/cryptography_plus.dart';
+import 'package:cryptography_flutter_plus/cryptography_flutter_plus.dart';
 import 'package:flutter/services.dart';
 import '../base/base_service.dart';
 import '../base/service_result.dart';
-import '../../main.dart';
 
 /// Production-ready encryption service using cryptography package
 class EncryptionService extends BaseService {
