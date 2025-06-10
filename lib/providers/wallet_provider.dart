@@ -5,7 +5,7 @@ import '../main.dart';
 /// Wallet provider stub - will be fully implemented in Section 3
 class WalletProvider extends ChangeNotifier {
   // Placeholder for wallet state
-  bool _isInitialized = false;
+  final bool _isInitialized = false;
   String? _walletId;
 
   bool get isInitialized => _isInitialized;

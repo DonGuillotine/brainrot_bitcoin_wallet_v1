@@ -42,8 +42,8 @@ dependencies:
   shared_preferences: ^2.2.2
 
   # Cryptography
-  cryptography: ^2.7.0
-  cryptography_flutter: ^2.3.0
+  cryptography_plus: ^2.7.1
+  cryptography_flutter_plus: ^2.3.4
 
   # Bitcoin & Lightning
   bdk_flutter: ^0.31.2

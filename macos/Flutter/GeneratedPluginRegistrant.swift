@@ -6,7 +6,7 @@ import FlutterMacOS
 import Foundation
 
 import audioplayers_darwin
-import cryptography_flutter
+import cryptography_flutter_plus
 import device_info_plus
 import flutter_local_notifications
 import flutter_secure_storage_darwin
