@@ -78,6 +78,7 @@ class ServiceException implements Exception {
       'NETWORK_ERROR' => 'No internet? Touch grass fr fr 🌱',
       'WALLET_NOT_FOUND' => 'Wallet gone. Reduced to atoms 💀',
       'INVALID_ADDRESS' => 'That address sus af 🤨',
+      'INVALID_AMOUNT' => 'Amount not valid. Math is hard 🧮',
       'INSUFFICIENT_FUNDS' => 'Broke boi alert! Get that bread 🍞',
       'TRANSACTION_FAILED' => 'Transaction failed. Skill issue? 🎮',
       'AUTH_FAILED' => 'Auth failed. You shall not pass! 🧙‍♂️',
@@ -94,6 +95,7 @@ class ErrorCodes {
   static const networkError = 'NETWORK_ERROR';
   static const walletNotFound = 'WALLET_NOT_FOUND';
   static const invalidAddress = 'INVALID_ADDRESS';
+  static const invalidAmount = 'INVALID_AMOUNT';
   static const insufficientFunds = 'INSUFFICIENT_FUNDS';
   static const transactionFailed = 'TRANSACTION_FAILED';
   static const authFailed = 'AUTH_FAILED';
