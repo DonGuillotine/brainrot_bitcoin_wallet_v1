@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -139,4 +141,57 @@ class AppTheme {
       ),
     );
   }
+
+  // Animation durations based on chaos level
+  static Duration getAnimationDuration(int chaosLevel) {
+    final baseMs = 500;
+    final multiplier = 1.0 - (chaosLevel * 0.08);
+    return Duration(milliseconds: (baseMs * multiplier).round());
+  }
+
+  // Get random meme emoji
+  static String getRandomMemeEmoji() {
+    final emojis = [
+      '🚀', '💎', '🙌', '📈', '🔥', '💰', '🎯', '⚡',
+      '🌙', '🦍', '🐻', '🐂', '💸', '🎰', '🎲', '🏴‍☠️',
+    ];
+    return emojis[math.Random().nextInt(emojis.length)];
+  }
+
+  // Get achievement emoji based on amount
+  static String getAchievementEmoji(double amount) {
+    if (amount >= 1.0) return '🐋'; // Whale
+    if (amount >= 0.1) return '🦈'; // Shark
+    if (amount >= 0.01) return '🐟'; // Fish
+    if (amount >= 0.001) return '🦐'; // Shrimp
+    return '🦠'; // Plankton
+  }
+
+  // Meme phrases for different situations
+  static const List<String> successPhrases = [
+    'LFG! 🚀',
+    'WAGMI! 💎🙌',
+    'To the moon! 🌙',
+    'Number go up! 📈',
+    'Based and pilled! 💊',
+    'Wen lambo? 🏎️',
+  ];
+
+  static const List<String> errorPhrases = [
+    'F in the chat 😢',
+    'NGMI 💀',
+    'Rekt! 📉',
+    'It\'s so over 😭',
+    'Skill issue? 🎮',
+    'Touch grass 🌱',
+  ];
+
+  static const List<String> loadingPhrases = [
+    'Mining blocks... ⛏️',
+    'Summoning sats... 🧙‍♂️',
+    'Printing money... 🖨️',
+    'Charging lasers... ⚡',
+    'Hodling tight... 💎',
+    'Vibing... 🎵',
+  ];
 }
