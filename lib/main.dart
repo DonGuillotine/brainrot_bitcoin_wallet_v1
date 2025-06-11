@@ -13,6 +13,7 @@ import 'providers/app_state_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/lightning_provider.dart';
 
 // Routing
 import 'routes/app_router.dart';
@@ -99,6 +100,11 @@ class BrainrotWalletApp extends StatelessWidget {
         // Wallet functionality
         ChangeNotifierProvider(
           create: (_) => WalletProvider(),
+        ),
+
+        // Lightning functionality
+        ChangeNotifierProvider(
+        create: (_) => LightningProvider(),
         ),
 
         // Theme management

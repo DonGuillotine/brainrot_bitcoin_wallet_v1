@@ -34,6 +34,11 @@ abstract class BaseService {
         stackTrace: stackTrace,
       );
 
+      // If error is already a ServiceException, preserve its code
+      if (error is ServiceException) {
+        return ServiceError(error);
+      }
+      
       return ServiceError(
         ServiceException(
           message: 'Failed to $operationName: ${error.toString()}',
