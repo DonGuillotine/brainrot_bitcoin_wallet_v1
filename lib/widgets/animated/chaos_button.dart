@@ -10,7 +10,7 @@ import 'dart:math' as math;
 /// Chaotic animated button with meme effects
 class ChaosButton extends StatefulWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final double? width;
   final double height;
   final bool isPrimary;
@@ -97,7 +97,7 @@ class _ChaosButtonState extends State<ChaosButton>
       });
     }
 
-    widget.onPressed();
+    widget.onPressed!();
   }
 
   @override

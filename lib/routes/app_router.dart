@@ -8,6 +8,7 @@ import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/wallet/create_wallet_screen.dart';
 import '../screens/wallet/restore_wallet_screen.dart';
+import '../screens/wallet/backup_verification_screen.dart';
 import '../screens/send/send_bitcoin_screen.dart';
 import '../screens/receive/receive_bitcoin_screen.dart';
 import '../screens/settings/settings_screen.dart';
@@ -94,6 +95,26 @@ class AppRouter {
               child: const RestoreWalletScreen(),
               transitionsBuilder: _chaosTransition,
             ),
+          ),
+          GoRoute(
+            path: 'backup',
+            name: 'backup-verification',
+            pageBuilder: (context, state) {
+              final mnemonic = state.extra as String?;
+              if (mnemonic == null) {
+                return CustomTransitionPage(
+                  key: state.pageKey,
+                  child: const ErrorScreen(),
+                  transitionsBuilder: _chaosTransition,
+                );
+              }
+
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: BackupVerificationScreen(mnemonic: mnemonic),
+                transitionsBuilder: _chaosTransition,
+              );
+            },
           ),
         ],
       ),
