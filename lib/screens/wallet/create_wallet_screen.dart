@@ -141,9 +141,21 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
         // Update app state
         final appState = context.read<AppStateProvider>();
         appState.setHasWallet(true);
+        await appState.setOnboarded(true);
 
         services.soundService.success();
         services.hapticService.success();
+
+        // Move to seed phrase display step
+        if (mounted) {
+          setState(() => _currentStep = 4);
+          // Use a small delay to ensure setState completes before page change
+          Future.delayed(const Duration(milliseconds: 50), () {
+            if (mounted) {
+              _pageController.jumpToPage(4);
+            }
+          });
+        }
       } else {
         _showError('Failed to create wallet');
       }

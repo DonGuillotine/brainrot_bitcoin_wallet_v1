@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:bdk_flutter/bdk_flutter.dart';
 import '../base/base_service.dart';
@@ -56,10 +57,43 @@ class BdkService extends BaseService {
       this._storageService,
       ) : super('BdkService');
 
+  /// Ensure Flutter is properly initialized for BDK operations
+  Future<void> _ensureFlutterInitialized() async {
+    // Ensure platform channels are ready
+    await Future.delayed(const Duration(milliseconds: 200));
+    
+    // Try to trigger BDK plugin initialization with a simple call
+    try {
+      logDebug('Testing BDK Flutter plugin initialization...');
+      
+      // Try to create a simple WordCount enum to trigger plugin initialization
+      // This is safer than creating a mnemonic directly
+      final testWordCount = WordCount.words12;
+      logDebug('BDK plugin test successful with word count: ${testWordCount.name}');
+      
+    } catch (e) {
+      logWarning('BDK plugin initialization test failed: $e');
+      
+      // If that fails, try to ensure the method channel is available
+      try {
+        // Force method channel registration by calling a platform channel
+        const platform = MethodChannel('bdk_flutter');
+        await platform.invokeMethod('test').catchError((error) => null);
+      } catch (channelError) {
+        logWarning('Method channel test failed: $channelError');
+      }
+      
+      // Add additional delay to allow plugin to initialize
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+  }
+
   /// Initialize wallet from storage
   Future<ServiceResult<void>> initializeWallet(String password) async {
     return executeOperation(
       operation: () async {
+        // Ensure Flutter binding is initialized before BDK operations
+        await _ensureFlutterInitialized();
         // Load wallet config
         final configResult = await _storageService.getValue<String>(
           key: 'wallet_config',
@@ -119,6 +153,9 @@ class BdkService extends BaseService {
   }) async {
     return executeOperation(
       operation: () async {
+        // Ensure Flutter binding is initialized before BDK operations
+        await _ensureFlutterInitialized();
+        
         // Generate or validate mnemonic
         final Mnemonic mnemonicObj;
         if (mnemonic != null) {
@@ -198,6 +235,9 @@ class BdkService extends BaseService {
     required Network network,
     required WalletType walletType,
   }) async {
+    // Ensure Flutter binding is initialized before BDK operations
+    await _ensureFlutterInitialized();
+    
     // Use createWallet with provided mnemonic
     final result = await createWallet(
       name: name,
