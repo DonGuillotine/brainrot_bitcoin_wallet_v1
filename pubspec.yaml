@@ -46,7 +46,10 @@ dependencies:
   cryptography_flutter_plus: ^2.3.4
 
   # Bitcoin & Lightning
-  bdk_flutter: ^0.31.2
+  bdk_flutter:
+    git:
+      url: https://github.com/LtbLightning/bdk-flutter.git
+      ref: main
   ldk_node: ^0.3.0
 
   # UI & Animations
@@ -106,6 +109,10 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+dependency_overrides:
+  # Fix version conflicts between bdk_flutter git version and ldk_node
+  freezed_annotation: ^3.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

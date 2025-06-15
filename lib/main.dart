@@ -119,8 +119,10 @@ class BrainrotWalletApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
-          // Initialize services with theme provider
+          // Initialize services with theme provider after Flutter is fully ready
           WidgetsBinding.instance.addPostFrameCallback((_) async {
+            // Add additional delay to ensure native plugins are ready
+            await Future.delayed(const Duration(milliseconds: 200));
             await services.initialize(themeProvider);
           });
 
