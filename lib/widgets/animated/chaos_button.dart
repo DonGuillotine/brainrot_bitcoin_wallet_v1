@@ -145,32 +145,39 @@ class _ChaosButtonState extends State<ChaosButton>
                     ..._buildGlitchLayers(),
 
                   // Main content
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.icon != null) ...[
-                        Icon(
-                          widget.icon,
-                          color: widget.isPrimary
-                              ? Colors.white
-                              : AppTheme.limeGreen,
-                          size: 24,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(
+                            widget.icon,
+                            color: widget.isPrimary
+                                ? Colors.white
+                                : AppTheme.limeGreen,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Flexible(
+                          child: Text(
+                            widget.text,
+                            style: ChaosTheme.getChaosTextStyle(
+                              fontSize: 18,
+                              chaosLevel: _isPressed ? chaosLevel + 2 : chaosLevel,
+                              fontWeight: FontWeight.bold,
+                              color: widget.isPrimary
+                                  ? Colors.white
+                                  : AppTheme.limeGreen,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        const SizedBox(width: 8),
                       ],
-                      Text(
-                        widget.text,
-                        style: ChaosTheme.getChaosTextStyle(
-                          fontSize: 18,
-                          chaosLevel: _isPressed ? chaosLevel + 2 : chaosLevel,
-                          fontWeight: FontWeight.bold,
-                          color: widget.isPrimary
-                              ? Colors.white
-                              : AppTheme.limeGreen,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -205,27 +212,34 @@ class _ChaosButtonState extends State<ChaosButton>
         offset: offset,
         child: Opacity(
           opacity: 0.3,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.icon != null) ...[
-                Icon(
-                  widget.icon,
-                  color: ChaosTheme.glitchColors[index],
-                  size: 24,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(
+                    widget.icon,
+                    color: ChaosTheme.glitchColors[index],
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Text(
+                    widget.text,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: ChaosTheme.glitchColors[index],
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                const SizedBox(width: 8),
               ],
-              Text(
-                widget.text,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: ChaosTheme.glitchColors[index],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );

@@ -452,6 +452,12 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
             controller: _passwordController,
             obscureText: !_showPassword,
             style: const TextStyle(color: Colors.white),
+            onChanged: (text) {
+              setState(() {
+                // This call to setState will trigger a rebuild on every character change,
+                // causing _buildPasswordStrength to re-evaluate.
+              });
+            },
             decoration: Theme.of(context).chaosInputDecoration(
               labelText: 'Password',
               chaosLevel: context.read<ThemeProvider>().chaosLevel,

@@ -86,6 +86,7 @@ class _MemeTextState extends State<MemeText>
     if (widget.rainbow) {
       textWidget = AnimatedBuilder(
         animation: _controller,
+        child: textWidget,
         builder: (context, child) {
           return ShaderMask(
             shaderCallback: (bounds) {
@@ -95,7 +96,7 @@ class _MemeTextState extends State<MemeText>
                 transform: GradientRotation(_controller.value * 2 * math.pi),
               ).createShader(bounds);
             },
-            child: textWidget,
+            child: child,
           );
         },
       );
