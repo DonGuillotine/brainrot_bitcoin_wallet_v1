@@ -677,7 +677,7 @@ class BdkService extends BaseService {
         final txBuilder = TxBuilder(); // Initialize first
         txBuilder.addRecipient( // Call as a method with positional arguments
           address.scriptPubkey(), // First argument: script
-          amountSats as BigInt,             // Second argument: amount
+          BigInt.from(amountSats),             // Second argument: amount
         );
         txBuilder.feeRate(feeRate.toDouble());
 
@@ -935,7 +935,7 @@ class BdkService extends BaseService {
       key: 'cached_transactions',
       value: jsonEncode(_transactions.take(50).map((tx) => {
         'txid': tx.txid,
-        'amount': tx.netAmount,
+        'amount': tx.netAmount.toInt(),
         'timestamp': tx.timestamp?.toIso8601String(),
       }).toList()),
     );

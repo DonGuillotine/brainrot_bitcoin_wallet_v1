@@ -180,21 +180,25 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
     });
 
     _scannerController?.stop();
-    services.soundService.success();
-    services.hapticService.success();
+    services.playSoundSafely((sound) => sound.success());
+    services.triggerHapticSafely((haptic) => haptic.success());
   }
 
   void _handleAmountChange(String value, String unit) {
+    print('DEBUG: Amount change - value: "$value", unit: "$unit"');
+    
     if (value.isEmpty) {
       setState(() {
         _btcAmount = 0;
         _satAmount = 0;
       });
+      print('DEBUG: Amount cleared - _satAmount: $_satAmount');
       return;
     }
 
     try {
       final amount = double.parse(value);
+      print('DEBUG: Parsed amount: $amount');
 
       setState(() {
         _selectedUnit = unit;
@@ -218,8 +222,9 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
             break;
         }
       });
+      print('DEBUG: Final _satAmount: $_satAmount');
     } catch (e) {
-      // Invalid amount
+      print('DEBUG: Amount parse error: $e');
     }
   }
 
@@ -233,7 +238,7 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
       curve: Curves.easeInOut,
     );
 
-    services.hapticService.light();
+    services.triggerHapticSafely((haptic) => haptic.light());
   }
 
   void _previousStep() {
@@ -274,6 +279,11 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
   Future<void> _sendTransaction() async {
     if (_isSending) return;
 
+    // Validate amount before sending as safety check
+    if (!_validateAmount()) {
+      return;
+    }
+
     setState(() => _isSending = true);
 
     try {
@@ -291,6 +301,11 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
 
   Future<void> _sendOnChainTransaction() async {
     final walletProvider = context.read<WalletProvider>();
+
+    // Debug logging
+    print('DEBUG: Sending Bitcoin with amount: $_satAmount sats');
+    print('DEBUG: Address: ${_addressController.text.trim()}');
+    print('DEBUG: Fee rate: $_selectedFeeRate');
 
     final txid = await walletProvider.sendBitcoin(
       address: _addressController.text.trim(),
@@ -359,8 +374,8 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
   }
 
   void _showError(String message) {
-    services.soundService.error();
-    services.hapticService.error();
+    services.playSoundSafely((sound) => sound.error());
+    services.triggerHapticSafely((haptic) => haptic.error());
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1307,6 +1322,10 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
   }
 
   String _getUsdConversion() {
+    if (!services.isInitialized) {
+      return '~\$-.--';
+    }
+    
     final priceData = services.priceService.getCurrentPrice('USD');
     if (priceData == null) {
       return '~\$-.--';
