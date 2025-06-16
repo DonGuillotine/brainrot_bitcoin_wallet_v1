@@ -9,6 +9,8 @@ A chaotic meme-themed Bitcoin & Lightning wallet that absolutely melts your brai
 
 > **Warning**: This wallet contains extreme levels of meme energy. Use with caution. May cause uncontrollable urges to HODL.
 
+![Screenshot_20250616_223225](https://github.com/user-attachments/assets/959069f1-61ee-459d-aa2f-8452345f8954)
+
 ## ✨ Features
 
 ### 🪙 Bitcoin Operations
