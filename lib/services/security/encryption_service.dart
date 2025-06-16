@@ -14,7 +14,7 @@ class EncryptionService extends BaseService {
   static const _keyLength = 32;
 
   // Argon2id parameters (balanced for mobile)
-  static const _argon2Memory = 64 * 1024 * 1024; // 65536 KiB = 64 MiB
+  static const _argon2Memory = 32 * 1024 * 1024; // 32768 KiB = 32 MiB (within safe limits)
   static const _argon2Iterations = 3;
   static const _argon2Parallelism = 4;
 

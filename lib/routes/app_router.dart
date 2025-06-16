@@ -33,14 +33,30 @@ class AppRouter {
       final appState = context.read<AppStateProvider>();
       final isOnboarding = state.matchedLocation == '/onboarding';
       final isCreatingWallet = state.matchedLocation.startsWith('/wallet/');
+      final isHome = state.matchedLocation == '/home';
 
-      // If wallet exists and we're on splash, go to home
-      if (appState.hasWallet && state.matchedLocation == '/') {
+      // Skip redirects if app is still loading
+      if (appState.isLoading) {
+        return null;
+      }
+
+      // If onboarding completed and wallet exists, go to home from splash
+      if (appState.isOnboarded && appState.hasWallet && state.matchedLocation == '/') {
         return '/home';
       }
 
-      // If no wallet and not onboarding, go to onboarding
-      if (!appState.hasWallet && !isOnboarding && !isCreatingWallet) {
+      // If onboarding completed but no wallet and on splash, go to wallet creation
+      if (appState.isOnboarded && !appState.hasWallet && state.matchedLocation == '/') {
+        return '/wallet/create';
+      }
+
+      // If onboarding completed and wallet exists but user is trying to access onboarding, redirect to home
+      if (appState.isOnboarded && appState.hasWallet && isOnboarding) {
+        return '/home';
+      }
+
+      // If onboarding not completed and not in onboarding/wallet creation flow, go to onboarding
+      if (!appState.isOnboarded && !isOnboarding && !isCreatingWallet) {
         return '/onboarding';
       }
 

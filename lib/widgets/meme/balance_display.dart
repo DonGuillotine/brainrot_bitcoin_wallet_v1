@@ -151,15 +151,28 @@ class _BalanceDisplayState extends State<BalanceDisplay>
               ),
 
               if (widget.showFiat) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
-                // Fiat balance
-                MemeText(
-                  hideBalance
-                      ? '≈ \$****'
-                      : '≈ ${walletProvider.balanceFiat}',
-                  fontSize: widget.compact ? 14 : 16,
-                  color: Colors.white70,
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha((0.1 * 255).round()),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 4),
+                      MemeText(
+                        hideBalance
+                            ? '****'
+                            : walletProvider.balanceFiat,
+                        fontSize: widget.compact ? 14 : 16,
+                        color: Colors.white70,
+                      ),
+                    ],
+                  ),
                 ),
               ],
 

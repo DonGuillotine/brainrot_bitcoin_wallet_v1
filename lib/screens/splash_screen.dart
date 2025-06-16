@@ -65,8 +65,8 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initializeApp() async {
     final appState = context.read<AppStateProvider>();
 
-    // Play startup sound
-    await services.soundService.startup();
+    // Play startup sound safely
+    services.playSoundSafely((sound) => sound.startup());
 
     // Simulate loading with meme messages
     await Future.delayed(const Duration(milliseconds: 500));
@@ -103,8 +103,8 @@ class _SplashScreenState extends State<SplashScreen>
   void _navigateToHome() {
     setState(() => _initialized = true);
 
-    // Haptic feedback
-    services.hapticService.success();
+    // Haptic feedback safely
+    services.triggerHapticSafely((haptic) => haptic.success());
 
     // Navigate after animation
     Future.delayed(const Duration(milliseconds: 500), () {

@@ -17,6 +17,7 @@ class MemeText extends StatefulWidget {
   final bool enableChaos;
   final bool rainbow;
   final bool glitch;
+  final TextOverflow? overflow;
 
   const MemeText(
       this.text, {
@@ -28,6 +29,7 @@ class MemeText extends StatefulWidget {
         this.enableChaos = true,
         this.rainbow = false,
         this.glitch = false,
+        this.overflow,
       });
 
   @override
@@ -74,6 +76,7 @@ class _MemeTextState extends State<MemeText>
     Widget textWidget = Text(
       widget.text,
       textAlign: widget.textAlign,
+      overflow: widget.overflow,
       style: ChaosTheme.getChaosTextStyle(
         fontSize: widget.fontSize,
         chaosLevel: chaosLevel,

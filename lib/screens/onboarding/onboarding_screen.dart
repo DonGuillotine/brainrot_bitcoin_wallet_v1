@@ -81,9 +81,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Mark onboarding as complete
     await appState.setOnboarded(true);
 
-    // Play sound
-    services.soundService.success();
-    services.hapticService.success();
+    // Play sound and haptic feedback safely
+    services.playSoundSafely((sound) => sound.success());
+    services.triggerHapticSafely((haptic) => haptic.success());
 
     // Navigate to wallet creation
     if (mounted) {
@@ -102,7 +102,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             controller: _pageController,
             onPageChanged: (index) {
               setState(() => _currentPage = index);
-              services.hapticService.light();
+              services.triggerHapticSafely((haptic) => haptic.light());
             },
             itemCount: _pages.length,
             itemBuilder: (context, index) {

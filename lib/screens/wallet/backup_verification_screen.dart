@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../../theme/app_theme.dart';
 import '../../widgets/animated/chaos_button.dart';
 import '../../widgets/animated/meme_text.dart';
 import '../../widgets/effects/particle_system.dart';
 import '../../services/service_locator.dart';
+import '../../providers/app_state_provider.dart';
 
 /// Backup verification screen to ensure user has saved seed phrase
 class BackupVerificationScreen extends StatefulWidget {
@@ -59,7 +61,7 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
     }
   }
 
-  void _verifyBackup() {
+  void _verifyBackup() async {
     bool allCorrect = true;
 
     for (final index in _verificationIndices) {
@@ -75,8 +77,14 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
 
     if (allCorrect) {
       setState(() => _verified = true);
-      services.soundService.success();
-      services.hapticService.success();
+      services.playSoundSafely((sound) => sound.success());
+      services.triggerHapticSafely((haptic) => haptic.success());
+
+      // Mark onboarding as complete
+      final appState = context.read<AppStateProvider>();
+      await appState.setOnboarded(true);
+      // Refresh app state to ensure hasWallet is properly set
+      await appState.refreshAppState();
 
       // Navigate to home after delay
       Future.delayed(const Duration(seconds: 2), () {
@@ -88,8 +96,8 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
   }
 
   void _showError(String message) {
-    services.soundService.error();
-    services.hapticService.error();
+    services.playSoundSafely((sound) => sound.error());
+    services.triggerHapticSafely((haptic) => haptic.error());
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
