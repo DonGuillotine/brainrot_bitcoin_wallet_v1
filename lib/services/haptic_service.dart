@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:flutter_vibrate/flutter_vibrate.dart';
+import 'package:vibration/vibration.dart';
 import '../providers/theme_provider.dart';
 import 'base/base_service.dart';
 
@@ -89,9 +89,9 @@ class HapticService extends BaseService {
     if (!_themeProvider.hapticsEnabled) return;
 
     // Vibrate if available
-    final canVibrate = await Vibrate.canVibrate;
-    if (canVibrate) {
-      await Vibrate.vibrate();
+    final canVibrate = await Vibration.hasVibrator();
+    if (canVibrate == true) {
+      await Vibration.vibrate();
     } else {
       // Fallback to heavy impacts
       for (int i = 0; i < 2; i++) {
