@@ -15,6 +15,25 @@ class ShareSheet extends StatelessWidget {
     required this.type,
   });
 
+  /// Shows the custom share sheet as a modal bottom sheet.
+  static void show({
+    required BuildContext context,
+    required String data,
+    required String type,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent, // Important for custom rounded corners
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return ShareSheet(
+          data: data,
+          type: type,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final shareOptions = [

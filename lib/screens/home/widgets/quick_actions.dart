@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../theme/app_theme.dart';
 import '../../../providers/theme_provider.dart';
+import '../../../providers/lightning_provider.dart';
 import '../../../widgets/animated/meme_text.dart';
 import '../../../services/service_locator.dart';
 
@@ -14,6 +15,7 @@ class QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final lightningProvider = context.watch<LightningProvider>();
     final chaosLevel = themeProvider.chaosLevel;
 
     final actions = [
@@ -24,22 +26,24 @@ class QuickActions extends StatelessWidget {
         onTap: () => context.go('/scan'),
       ),
       QuickAction(
-        icon: Icons.bolt,
-        label: 'Lightning',
+        icon: lightningProvider.isInitialized ? Icons.bolt : Icons.flash_on,
+        label: lightningProvider.isInitialized ? 'Lightning' : 'Setup ⚡',
         color: AppTheme.limeGreen,
-        onTap: () => context.go('/lightning'),
+        onTap: () => context.go(lightningProvider.isInitialized ? '/lightning/channels' : '/lightning/setup'),
       ),
       QuickAction(
-        icon: Icons.history,
-        label: 'History',
+        icon: Icons.receipt_long,
+        label: 'Invoice',
+        color: AppTheme.cyan,
+        onTap: () => context.go('/lightning/create-invoice'),
+        isEnabled: lightningProvider.isInitialized,
+      ),
+      QuickAction(
+        icon: Icons.send,
+        label: 'Pay',
         color: AppTheme.hotPink,
-        onTap: () => context.go('/transactions'),
-      ),
-      QuickAction(
-        icon: Icons.backup,
-        label: 'Backup',
-        color: AppTheme.warning,
-        onTap: () => context.go('/settings'),
+        onTap: () => context.go('/lightning/pay-invoice'),
+        isEnabled: lightningProvider.isInitialized,
       ),
     ];
 
@@ -57,17 +61,21 @@ class QuickActions extends StatelessWidget {
         final action = actions[index];
 
         return GestureDetector(
-          onTap: () {
+          onTap: action.isEnabled ? () {
             services.hapticService.light();
             services.soundService.tap();
             action.onTap();
-          },
+          } : null,
           child: Container(
             decoration: BoxDecoration(
-              color: action.color.withAlpha((0.2 * 255).round()),
+              color: action.isEnabled 
+                  ? action.color.withAlpha((0.2 * 255).round())
+                  : Colors.grey.withAlpha((0.1 * 255).round()),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: action.color.withAlpha((0.5 * 255).round()),
+                color: action.isEnabled
+                    ? action.color.withAlpha((0.5 * 255).round())
+                    : Colors.grey.withAlpha((0.3 * 255).round()),
                 width: 1,
               ),
             ),
@@ -76,12 +84,12 @@ class QuickActions extends StatelessWidget {
               children: [
                 Icon(
                   action.icon,
-                  color: action.color,
+                  color: action.isEnabled ? action.color : Colors.grey,
                   size: 28,
                 )
                     .animate(
                   onPlay: (controller) {
-                    if (chaosLevel >= 6 && index % 2 == 0) {
+                    if (chaosLevel >= 6 && index % 2 == 0 && action.isEnabled) {
                       controller.repeat(reverse: true);
                     }
                   },
@@ -97,7 +105,7 @@ class QuickActions extends StatelessWidget {
                 MemeText(
                   action.label,
                   fontSize: 12,
-                  color: action.color,
+                  color: action.isEnabled ? action.color : Colors.grey,
                 ),
               ],
             ),
@@ -119,11 +127,13 @@ class QuickAction {
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final bool isEnabled;
 
   const QuickAction({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
+    this.isEnabled = true,
   });
 }

@@ -24,6 +24,9 @@ import 'theme/app_theme.dart';
 // Services
 import 'services/logger_service.dart';
 
+// Router
+import 'package:go_router/go_router.dart';
+
 // Global instances
 late final Logger logger;
 late final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -84,6 +87,7 @@ Future<void> initializeApp() async {
   logger.i('✅ App initialization complete!');
 }
 
+
 /// Main app widget with all providers and routing
 class BrainrotWalletApp extends StatelessWidget {
   const BrainrotWalletApp({super.key});
@@ -121,16 +125,39 @@ class BrainrotWalletApp extends StatelessWidget {
         builder: (context, themeProvider, _) {
           // Initialize services with theme provider after Flutter is fully ready
           WidgetsBinding.instance.addPostFrameCallback((_) async {
-            // Add additional delay to ensure native plugins are ready
-            await Future.delayed(const Duration(milliseconds: 200));
-            await services.initialize(themeProvider);
+            try {
+              // Add additional delay to ensure native plugins are ready
+              await Future.delayed(const Duration(milliseconds: 200));
+              await services.initialize(themeProvider);
+              
+              // Get providers
+              final appStateProvider = context.read<AppStateProvider>();
+              final walletProvider = context.read<WalletProvider>();
+              
+              // Set wallet initializing state to prevent premature routing
+              appStateProvider.setWalletInitializing(true);
+              
+              // Auto-initialize wallet if needed after services are ready
+              await walletProvider.autoInitializeIfNeeded();
+              
+              // Clear wallet initializing state - routing can now proceed
+              appStateProvider.setWalletInitializing(false);
+              
+            } catch (e) {
+              logger.e('Error during app initialization', error: e);
+              // Ensure we clear the loading state even on error
+              final appStateProvider = context.read<AppStateProvider>();
+              appStateProvider.setWalletInitializing(false);
+            }
           });
 
+          final appStateProvider = context.read<AppStateProvider>();
+          
           return MaterialApp.router(
             title: 'Brainrot Wallet',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.darkTheme,
-            routerConfig: AppRouter.router,
+            routerConfig: AppRouter.createRouter(appStateProvider),
             builder: (context, child) {
               // Wrap the entire app with animations
               return Stack(

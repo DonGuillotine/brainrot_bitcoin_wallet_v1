@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import '../base/base_service.dart';
 import '../base/service_result.dart';
 import 'network_service.dart';
@@ -51,31 +52,29 @@ class PriceService extends BaseService {
 
     return executeOperation(
       operation: () async {
-        // Using CoinGecko API as example
-        final result = await _networkService.get<Map<String, dynamic>>(
-          url: 'https://api.coingecko.com/api/v3/simple/price',
-          queryParameters: {
-            'ids': 'bitcoin',
-            'vs_currencies': currency.toLowerCase(),
-            'include_24hr_change': true,
-            'include_24hr_vol': true,
-          },
-        );
-
-        if (result.isError) {
-          throw result.errorOrNull!;
+        // Try multiple APIs for better reliability
+        PriceData? priceData;
+        
+        // Try CoinGecko first (primary)
+        try {
+          priceData = await _fetchFromCoinGecko(currency);
+        } catch (e) {
+          logWarning('CoinGecko API failed: $e');
+          
+          // Fallback to CoinCap API
+          try {
+            priceData = await _fetchFromCoinCap(currency);
+          } catch (e2) {
+            logWarning('CoinCap API failed: $e2');
+            
+            // If both fail, throw the original error
+            throw e;
+          }
         }
 
-        final data = result.valueOrNull!;
-        final btcData = data['bitcoin'] as Map<String, dynamic>;
-
-        final priceData = PriceData(
-          currency: currency,
-          price: btcData[currency.toLowerCase()].toDouble(),
-          change24h: btcData['${currency.toLowerCase()}_24h_change']?.toDouble() ?? 0.0,
-          volume24h: btcData['${currency.toLowerCase()}_24h_vol']?.toDouble() ?? 0.0,
-          timestamp: DateTime.now(),
-        );
+        if (priceData == null) {
+          throw Exception('All price APIs failed');
+        }
 
         // Update cache
         _priceCache[currency] = priceData;
@@ -87,6 +86,93 @@ class PriceService extends BaseService {
       },
       operationName: 'fetch $currency price',
       errorCode: ErrorCodes.networkError,
+    );
+  }
+
+  /// Fetch from CoinGecko API
+  Future<PriceData> _fetchFromCoinGecko(String currency) async {
+    final result = await _networkService.get<Map<String, dynamic>>(
+      url: 'https://api.coingecko.com/api/v3/simple/price',
+      queryParameters: {
+        'ids': 'bitcoin',
+        'vs_currencies': currency.toLowerCase(),
+        'include_24hr_change': true,
+        'include_24hr_vol': true,
+      },
+      options: Options(
+        sendTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      ),
+    );
+
+    if (result.isError) {
+      throw result.errorOrNull!;
+    }
+
+    final data = result.valueOrNull!;
+    final btcData = data['bitcoin'] as Map<String, dynamic>;
+
+    return PriceData(
+      currency: currency,
+      price: btcData[currency.toLowerCase()].toDouble(),
+      change24h: btcData['${currency.toLowerCase()}_24h_change']?.toDouble() ?? 0.0,
+      volume24h: btcData['${currency.toLowerCase()}_24h_vol']?.toDouble() ?? 0.0,
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// Fetch from CoinCap API (fallback)
+  Future<PriceData> _fetchFromCoinCap(String currency) async {
+    final result = await _networkService.get<Map<String, dynamic>>(
+      url: 'https://api.coincap.io/v2/assets/bitcoin',
+      options: Options(
+        sendTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      ),
+    );
+
+    if (result.isError) {
+      throw result.errorOrNull!;
+    }
+
+    final data = result.valueOrNull!;
+    final btcData = data['data'] as Map<String, dynamic>;
+
+    final priceUsd = double.parse(btcData['priceUsd']);
+    final changePercent24Hr = double.parse(btcData['changePercent24Hr'] ?? '0');
+
+    // For now, assume USD and convert if needed
+    // In a real app, you'd use a currency conversion API
+    double price = priceUsd;
+    if (currency.toUpperCase() != 'USD') {
+      // Simple mock conversion rates - in production use real rates
+      switch (currency.toUpperCase()) {
+        case 'EUR':
+          price = priceUsd * 0.85;
+          break;
+        case 'GBP':
+          price = priceUsd * 0.75;
+          break;
+        case 'JPY':
+          price = priceUsd * 110;
+          break;
+        case 'CAD':
+          price = priceUsd * 1.25;
+          break;
+        case 'AUD':
+          price = priceUsd * 1.35;
+          break;
+        default:
+          price = priceUsd;
+      }
+    }
+
+    return PriceData(
+      currency: currency,
+      price: price,
+      change24h: changePercent24Hr,
+      volume24h: double.parse(btcData['volumeUsd24Hr'] ?? '0'),
+      timestamp: DateTime.now(),
     );
   }
 

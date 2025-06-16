@@ -356,6 +356,43 @@ class LightningProvider extends ChangeNotifier {
     }
   }
 
+  /// Process LNURL-withdraw
+  Future<String?> processLnurlWithdraw({
+    required String lnurlWithdraw,
+    required int amountSats,
+    String? description,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final result = await _ldkService.processLnurlWithdraw(
+        lnurlWithdraw: lnurlWithdraw,
+        amountSats: amountSats,
+        description: description,
+      );
+
+      if (result.isSuccess) {
+        logger.i('LNURL-withdraw processed! 💰');
+
+        // Play sound
+        await services.soundService.receiveTransaction();
+        await services.hapticService.success();
+
+        return result.valueOrNull;
+      } else {
+        _setError(result.errorOrNull!.toMemeMessage());
+        return null;
+      }
+    } catch (e) {
+      _setError('Failed to process LNURL-withdraw: $e');
+      logger.e('LNURL-withdraw failed', error: e);
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// Delete Lightning node
   Future<void> deleteLightningNode() async {
     _setLoading(true);

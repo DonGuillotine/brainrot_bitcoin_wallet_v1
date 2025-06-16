@@ -76,16 +76,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _completeOnboarding() async {
-    final appState = context.read<AppStateProvider>();
-
-    // Mark onboarding as complete
-    await appState.setOnboarded(true);
-
     // Play sound and haptic feedback safely
     services.playSoundSafely((sound) => sound.success());
     services.triggerHapticSafely((haptic) => haptic.success());
 
-    // Navigate to wallet creation
+    // Navigate to wallet creation (don't set onboarded until backup verification is complete)
     if (mounted) {
       context.go('/wallet/create');
     }

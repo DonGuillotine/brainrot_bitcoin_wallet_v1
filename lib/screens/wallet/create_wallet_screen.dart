@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:bdk_flutter/bdk_flutter.dart';
+import '../../main.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/chaos_theme.dart';
 import '../../providers/app_state_provider.dart';
@@ -138,10 +139,11 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
           _mnemonicWords = mnemonic.split(' ');
         });
 
-        // Update app state
+        // Store mnemonic temporarily for backup verification
+        await prefs.setString('temp_backup_mnemonic', mnemonic);
+
+        // Update app state to detect the newly created wallet (but don't set onboarded yet)
         final appState = context.read<AppStateProvider>();
-        await appState.setOnboarded(true);
-        // Refresh app state to detect the newly created wallet
         await appState.refreshAppState();
 
         services.soundService.success();

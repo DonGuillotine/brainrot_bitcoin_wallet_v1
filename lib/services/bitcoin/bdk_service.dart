@@ -46,6 +46,7 @@ class BdkService extends BaseService {
 
   // Getters
   bool get isInitialized => _wallet != null;
+  bool get isReadOnlyMode => _wallet != null && _mnemonic == null;
   WalletConfig? get walletConfig => _walletConfig;
   List<BrainrotAddress> get addresses => List.unmodifiable(_addresses);
   List<BrainrotTransaction> get transactions => List.unmodifiable(_transactions);
@@ -143,6 +144,90 @@ class BdkService extends BaseService {
         logInfo('Wallet initialized successfully 🎉');
       },
       operationName: 'initialize wallet',
+      errorCode: ErrorCodes.walletNotFound,
+    );
+  }
+
+  /// Unlock wallet for signing operations (requires password)
+  Future<ServiceResult<void>> unlockWallet(String password) async {
+    if (_walletConfig == null) {
+      return ServiceError(
+        ServiceException(
+          message: 'No wallet configuration found',
+          code: ErrorCodes.walletNotFound,
+        ),
+      );
+    }
+
+    return executeOperation(
+      operation: () async {
+        // Load encrypted mnemonic
+        final mnemonicResult = await _storageService.getSecureValue(
+          key: 'wallet_mnemonic',
+          password: password,
+        );
+
+        if (mnemonicResult.isError || mnemonicResult.valueOrNull == null) {
+          throw ServiceException(
+            message: 'Failed to decrypt wallet with provided password',
+            code: ErrorCodes.encryptionError,
+          );
+        }
+
+        _mnemonic = mnemonicResult.valueOrNull!;
+        
+        // Reinitialize BDK wallet with mnemonic
+        await _initializeBdk();
+
+        // Ensure wallet is synced after unlocking to get accurate balance
+        await syncWallet();
+
+        logInfo('Wallet unlocked for signing operations 🔓');
+      },
+      operationName: 'unlock wallet',
+      errorCode: ErrorCodes.encryptionError,
+    );
+  }
+
+  /// Auto-initialize wallet for read-only operations (no password required)
+  Future<ServiceResult<void>> autoInitializeWallet() async {
+    return executeOperation(
+      operation: () async {
+        // Ensure Flutter binding is initialized before BDK operations
+        await _ensureFlutterInitialized();
+
+        // Load wallet config (not encrypted)
+        final configResult = await _storageService.getValue<String>(
+          key: 'wallet_config',
+        );
+
+        if (configResult.isError || configResult.valueOrNull == null) {
+          throw ServiceException(
+            message: 'No wallet found',
+            code: ErrorCodes.walletNotFound,
+          );
+        }
+
+        final config = WalletConfig.fromJson(
+          jsonDecode(configResult.valueOrNull!) as Map<String, dynamic>,
+        );
+
+        _walletConfig = config;
+        // Note: _mnemonic remains null for read-only mode
+
+        // Initialize BDK wallet using descriptors only
+        await _initializeBdk();
+
+        // Load cached data
+        await _loadCachedData();
+
+        // Start sync
+        await syncWallet();
+        _startAutoSync();
+
+        logInfo('Wallet auto-initialized for read-only operations 🔍');
+      },
+      operationName: 'auto-initialize wallet',
       errorCode: ErrorCodes.walletNotFound,
     );
   }
@@ -271,18 +356,92 @@ class BdkService extends BaseService {
       );
     }
 
-    // Create descriptor objects from the stored strings
-    final externalDescriptor = await Descriptor.create(
-      descriptor: _walletConfig!.descriptor,
-      network: _walletConfig!.network,
-    );
-
+    Descriptor externalDescriptor;
     Descriptor? changeDescriptorInstance;
-    if (_walletConfig!.changeDescriptor != null) {
-      changeDescriptorInstance = await Descriptor.create(
-        descriptor: _walletConfig!.changeDescriptor!,
+
+    // If we have the mnemonic (unlocked mode), create fresh descriptors with signing capability
+    if (_mnemonic != null) {
+      logDebug('Creating wallet with mnemonic for signing operations...');
+      
+      final mnemonicObj = await Mnemonic.fromString(_mnemonic!);
+      
+      // Create DescriptorSecretKey directly for signing capability
+      final secretKey = await DescriptorSecretKey.create(
+        mnemonic: mnemonicObj,
         network: _walletConfig!.network,
       );
+
+      // Create descriptors directly with the secret key (preserves private key material)
+      switch (_walletConfig!.walletType) {
+        case WalletType.standard: // BIP84 Native SegWit
+          externalDescriptor = await Descriptor.newBip84(
+            secretKey: secretKey,
+            keychain: KeychainKind.externalChain,
+            network: _walletConfig!.network,
+          );
+          changeDescriptorInstance = await Descriptor.newBip84(
+            secretKey: secretKey,
+            keychain: KeychainKind.internalChain,
+            network: _walletConfig!.network,
+          );
+          break;
+
+        case WalletType.legacy: // BIP44 Legacy
+          externalDescriptor = await Descriptor.newBip44(
+            secretKey: secretKey,
+            keychain: KeychainKind.externalChain,
+            network: _walletConfig!.network,
+          );
+          changeDescriptorInstance = await Descriptor.newBip44(
+            secretKey: secretKey,
+            keychain: KeychainKind.internalChain,
+            network: _walletConfig!.network,
+          );
+          break;
+
+        case WalletType.nested: // BIP49 Nested SegWit
+          externalDescriptor = await Descriptor.newBip49(
+            secretKey: secretKey,
+            keychain: KeychainKind.externalChain,
+            network: _walletConfig!.network,
+          );
+          changeDescriptorInstance = await Descriptor.newBip49(
+            secretKey: secretKey,
+            keychain: KeychainKind.internalChain,
+            network: _walletConfig!.network,
+          );
+          break;
+
+        case WalletType.taproot: // BIP86 Taproot
+          externalDescriptor = await Descriptor.newBip86(
+            secretKey: secretKey,
+            keychain: KeychainKind.externalChain,
+            network: _walletConfig!.network,
+          );
+          changeDescriptorInstance = await Descriptor.newBip86(
+            secretKey: secretKey,
+            keychain: KeychainKind.internalChain,
+            network: _walletConfig!.network,
+          );
+          break;
+      }
+
+      logDebug('Descriptors created with private key material for signing');
+    } else {
+      logDebug('Creating read-only wallet from stored descriptors...');
+      
+      // Read-only mode: use stored descriptors
+      externalDescriptor = await Descriptor.create(
+        descriptor: _walletConfig!.descriptor,
+        network: _walletConfig!.network,
+      );
+
+      if (_walletConfig!.changeDescriptor != null) {
+        changeDescriptorInstance = await Descriptor.create(
+          descriptor: _walletConfig!.changeDescriptor!,
+          network: _walletConfig!.network,
+        );
+      }
     }
 
     _wallet = await Wallet.create(
@@ -664,6 +823,14 @@ class BdkService extends BaseService {
         ),
       );
     }
+    if (_mnemonic == null) {
+      return ServiceError(
+        ServiceException(
+          message: 'Wallet is in read-only mode. Please unlock wallet with password to send transactions.',
+          code: ErrorCodes.encryptionError,
+        ),
+      );
+    }
 
     return executeOperation(
       operation: () async {
@@ -672,6 +839,21 @@ class BdkService extends BaseService {
           s: recipientAddress,
           network: _walletConfig!.network,
         );
+
+        // Check wallet balance before building transaction
+        final balance = await _wallet!.getBalance();
+        final totalNeeded = amountSats + (feeRate * 250); // Rough estimate of fee (250 vbytes is typical transaction size)
+        
+        logInfo('Current balance: confirmed=${balance.confirmed}, total=${balance.total}');
+        logInfo('Attempting to send: $amountSats sats with fee rate: $feeRate sat/vB');
+        logInfo('Estimated total needed: $totalNeeded sats');
+
+        // Convert totalNeeded to BigInt for comparison with balance.confirmed
+        final BigInt totalNeededBigInt = BigInt.from(totalNeeded);
+
+        if (balance.confirmed < totalNeededBigInt) { // Compare BigInt with BigInt
+          throw Exception('Insufficient funds: need $totalNeededBigInt sats but only have ${balance.confirmed} confirmed sats');
+        }
 
         // Build transaction
         final txBuilder = TxBuilder(); // Initialize first
@@ -684,13 +866,33 @@ class BdkService extends BaseService {
         // Create PSBT
         final (psbt, transactionDetails) = await txBuilder.finish(_wallet!);
 
-        // Sign the PSBT
-        final PartiallySignedTransaction signedPsbt = (await _wallet!.sign( // sign returns a Future<PartiallySignedTransaction>
-          psbt: psbt,
-        )) as PartiallySignedTransaction;
+        // Check if we can afford this transaction
+        logInfo('Transaction details: fee=${transactionDetails.fee}, sent=${transactionDetails.sent}, received=${transactionDetails.received}');
+        
+        // Sign the PSBT with more detailed error handling
+        try {
+          logDebug('Attempting to sign transaction...');
+          
+          // Verify wallet is in signing mode
+          if (_mnemonic == null) {
+            throw Exception('Wallet is in read-only mode - cannot sign transactions');
+          }
+          
+          final signSuccess = await _wallet!.sign(psbt: psbt);
+          logDebug('Sign operation returned: $signSuccess');
+          
+          if (!signSuccess) {
+            throw Exception('BDK wallet sign operation returned false - this typically indicates missing private keys, invalid PSBT structure, or incompatible transaction inputs');
+          }
+          
+          logInfo('Transaction signed successfully ✍️');
+        } catch (e) {
+          logError('Signing error: $e');
+          throw Exception('Transaction signing failed: $e');
+        }
 
         // Extract the final transaction from the signed PSBT
-        final finalTransaction = signedPsbt.extractTx();
+        final finalTransaction = psbt.extractTx();
 
         // Broadcast transaction
         await _blockchain!.broadcast(transaction: finalTransaction); // Pass the Transaction object
