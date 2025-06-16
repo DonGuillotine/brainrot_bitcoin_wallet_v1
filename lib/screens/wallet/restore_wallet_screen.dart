@@ -109,7 +109,9 @@ class _RestoreWalletScreenState extends State<RestoreWalletScreen> {
       if (success) {
         // Update app state
         final appState = context.read<AppStateProvider>();
-        appState.setHasWallet(true);
+        await appState.setOnboarded(true);
+        // Refresh app state to detect the restored wallet
+        await appState.refreshAppState();
 
         services.soundService.success();
         services.hapticService.success();
