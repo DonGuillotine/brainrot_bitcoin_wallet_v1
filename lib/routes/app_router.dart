@@ -3,9 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../screens/lightning/channel_list_screen.dart';
+import '../screens/lightning/lightning_setup_screen.dart';
+import '../screens/scanner/qr_scanner_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/transactions/transaction_history_screen.dart';
 import '../screens/wallet/create_wallet_screen.dart';
 import '../screens/wallet/restore_wallet_screen.dart';
 import '../screens/wallet/backup_verification_screen.dart';
@@ -160,6 +164,54 @@ class AppRouter {
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const SettingsScreen(),
+          transitionsBuilder: _slideUpTransition,
+        ),
+      ),
+
+      // Transactions
+      GoRoute(
+        path: '/transactions',
+        name: 'transactions',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const TransactionHistoryScreen(),
+          transitionsBuilder: _slideUpTransition,
+        ),
+      ),
+
+      // Lightning
+      GoRoute(
+        path: '/lightning',
+        name: 'lightning',
+        builder: (context, state) => const SizedBox.shrink(),
+        routes: [
+          GoRoute(
+            path: 'setup',
+            name: 'lightning-setup',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const LightningSetupScreen(),
+              transitionsBuilder: _chaosTransition,
+            ),
+          ),
+          GoRoute(
+            path: 'channels',
+            name: 'lightning-channels',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const ChannelListScreen(),
+              transitionsBuilder: _slideUpTransition,
+            ),
+          ),
+        ],
+      ),
+
+      GoRoute(
+        path: '/scan',
+        name: 'scan',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const QRScannerScreen(),
           transitionsBuilder: _slideUpTransition,
         ),
       ),

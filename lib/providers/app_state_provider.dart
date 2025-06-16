@@ -40,6 +40,11 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
+  /// Refresh app state from storage (for manual refresh)
+  Future<void> refreshAppState() async {
+    await _initializeAppState();
+  }
+
   /// Set loading state
   void setLoading(bool loading) {
     _isLoading = loading;

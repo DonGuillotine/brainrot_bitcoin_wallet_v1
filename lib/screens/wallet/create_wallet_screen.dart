@@ -140,8 +140,9 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
 
         // Update app state
         final appState = context.read<AppStateProvider>();
-        appState.setHasWallet(true);
         await appState.setOnboarded(true);
+        // Refresh app state to detect the newly created wallet
+        await appState.refreshAppState();
 
         services.soundService.success();
         services.hapticService.success();
@@ -769,8 +770,8 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
                         child: Container(
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 12,
+                            vertical: 12,
+                            horizontal: 8,
                           ),
                           decoration: BoxDecoration(
                             color: AppTheme.darkGrey,
@@ -793,7 +794,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
                                 _mnemonicWords![index],
                                 style: const TextStyle(
                                   fontFamily: 'Monaco',
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -866,6 +867,7 @@ class _CreateWalletScreenState extends State<CreateWalletScreen> {
             const SizedBox(width: 16),
 
           Expanded(
+            flex: 2,
             child: ChaosButton(
               text: _currentStep == 2 ? 'Create Wallet' : 'Continue',
               onPressed: _isCreating ? null : _nextStep,

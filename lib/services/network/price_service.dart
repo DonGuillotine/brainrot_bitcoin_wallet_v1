@@ -101,6 +101,15 @@ class PriceService extends BaseService {
     return fiatAmount / priceData.price;
   }
 
+  /// Get current price data from cache
+  PriceData? getCurrentPrice(String currency) {
+    final cached = _priceCache[currency];
+    if (cached != null && !cached.isExpired(_cacheExpiry)) {
+      return cached;
+    }
+    return null;
+  }
+
   /// Format price with meme style
   String formatPriceWithMemes(PriceData priceData) {
     final isUp = priceData.change24h > 0;

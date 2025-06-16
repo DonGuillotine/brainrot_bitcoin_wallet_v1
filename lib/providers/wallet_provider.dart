@@ -16,6 +16,7 @@ class WalletProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSyncing = false;
   String? _error;
+  int? _currentBlockHeight;
 
   // Wallet data
   WalletConfig? _walletConfig;
@@ -34,6 +35,7 @@ class WalletProvider extends ChangeNotifier {
   List<BrainrotTransaction> get transactions => _transactions;
   List<BrainrotAddress> get addresses => _addresses;
   BrainrotAddress? get currentReceiveAddress => _currentReceiveAddress;
+  int? get currentBlockHeight => _currentBlockHeight;
 
   // Computed getters
   String get balanceDisplay {
@@ -42,8 +44,15 @@ class WalletProvider extends ChangeNotifier {
   }
 
   String get balanceFiat {
-    // TODO: Implement with price service
-    return '\$0.00';
+    if (_balance == null) return '\$0.00';
+    
+    final priceData = services.priceService.getCurrentPrice('USD');
+    if (priceData == null) {
+      return '\$0.00';
+    }
+    
+    final fiatValue = services.priceService.convertBtcToFiat(_balance!.btc, priceData);
+    return '\$${fiatValue.toStringAsFixed(2)}';
   }
 
   WalletProvider() : _bdkService = BdkService(
@@ -70,6 +79,12 @@ class WalletProvider extends ChangeNotifier {
     // Sync status
     _bdkService.syncStream.listen((isSyncing) {
       _isSyncing = isSyncing;
+      notifyListeners();
+    });
+
+    // Blockchain height updates
+    _bdkService.blockHeightStream.listen((height) {
+      _currentBlockHeight = height;
       notifyListeners();
     });
   }

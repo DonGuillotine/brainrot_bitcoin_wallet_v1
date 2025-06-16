@@ -160,6 +160,8 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
                         style: const TextStyle(
                           color: Colors.white,
                           fontFamily: 'Monaco',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
                           labelText: 'Word #${index + 1}',
@@ -191,50 +193,59 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
                   ),
                 ] else ...[
                   // Success state
-                  Icon(
-                    Icons.check_circle,
-                    size: 120,
-                    color: AppTheme.limeGreen,
-                  )
-                      .animate()
-                      .scale(
-                    begin: const Offset(0, 0),
-                    end: const Offset(1, 1),
-                    curve: Curves.elasticOut,
-                    duration: const Duration(seconds: 1),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 80,
+                          color: AppTheme.limeGreen,
+                        )
+                            .animate()
+                            .scale(
+                          begin: const Offset(0, 0),
+                          end: const Offset(1, 1),
+                          curve: Curves.elasticOut,
+                          duration: const Duration(seconds: 1),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        MemeText(
+                          'Backup Verified!',
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          rainbow: true,
+                          textAlign: TextAlign.center,
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        MemeText(
+                          'Your wallet is ready. LFG! 🚀',
+                          fontSize: 16,
+                          color: Colors.white70,
+                          textAlign: TextAlign.center,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        MemeText(
+                          'Redirecting to wallet...',
+                          fontSize: 14,
+                          color: Colors.white54,
+                          textAlign: TextAlign.center,
+                        )
+                            .animate(
+                          onPlay: (controller) => controller.repeat(),
+                        )
+                            .fadeIn()
+                            .then()
+                            .fadeOut(),
+                      ],
+                    ),
                   ),
-
-                  const SizedBox(height: 32),
-
-                  MemeText(
-                    'Backup Verified!',
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    rainbow: true,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  MemeText(
-                    'Your wallet is ready. LFG! 🚀',
-                    fontSize: 18,
-                    color: Colors.white70,
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  MemeText(
-                    'Redirecting to wallet...',
-                    fontSize: 14,
-                    color: Colors.white54,
-                  )
-                      .animate(
-                    onPlay: (controller) => controller.repeat(),
-                  )
-                      .fadeIn()
-                      .then()
-                      .fadeOut(),
                 ],
               ],
             ),

@@ -30,22 +30,26 @@ class BdkService extends BaseService {
   bool _isSyncing = false;
   DateTime? _lastSyncTime;
   Timer? _syncTimer;
+  int? _currentBlockHeight;
 
   // Stream controllers
   final _balanceController = StreamController<BrainrotBalance>.broadcast();
   final _transactionController = StreamController<List<BrainrotTransaction>>.broadcast();
   final _syncController = StreamController<bool>.broadcast();
+  final _blockHeightController = StreamController<int>.broadcast();
 
   // Streams
   Stream<BrainrotBalance> get balanceStream => _balanceController.stream;
   Stream<List<BrainrotTransaction>> get transactionStream => _transactionController.stream;
   Stream<bool> get syncStream => _syncController.stream;
+  Stream<int> get blockHeightStream => _blockHeightController.stream;
 
   // Getters
   bool get isInitialized => _wallet != null;
   WalletConfig? get walletConfig => _walletConfig;
   List<BrainrotAddress> get addresses => List.unmodifiable(_addresses);
   List<BrainrotTransaction> get transactions => List.unmodifiable(_transactions);
+  int? get currentBlockHeight => _currentBlockHeight;
 
 
   // Configuration for the fee estimation API
@@ -461,6 +465,9 @@ class BdkService extends BaseService {
           // Update addresses
           await _updateAddresses();
 
+          // Update blockchain height
+          await _updateBlockHeight();
+
           // Save cached data
           await _saveCachedData();
 
@@ -549,6 +556,22 @@ class BdkService extends BaseService {
     // This is a simplified version - in production, track address usage
     if (_addresses.isEmpty) {
       await _generateAddresses(count: 20);
+    }
+  }
+
+  /// Update blockchain height
+  Future<void> _updateBlockHeight() async {
+    if (_blockchain == null) return;
+
+    try {
+      // Get blockchain height via Electrum
+      final height = await _blockchain!.getHeight();
+      _currentBlockHeight = height;
+      _blockHeightController.add(height);
+      
+      logInfo('Blockchain height updated: $height 📏');
+    } catch (e) {
+      logError('Failed to get blockchain height: $e');
     }
   }
 
@@ -950,6 +973,7 @@ class BdkService extends BaseService {
     _balanceController.close();
     _transactionController.close();
     _syncController.close();
+    _blockHeightController.close();
   }
 }
 
