@@ -23,7 +23,7 @@ class QuickActions extends StatelessWidget {
         icon: Icons.qr_code_scanner,
         label: 'Scan',
         color: AppTheme.deepPurple,
-        onTap: () => context.go('/scan'),
+        onTap: () => context.go('/home/receive'),
       ),
       QuickAction(
         icon: lightningProvider.isInitialized ? Icons.bolt : Icons.flash_on,
