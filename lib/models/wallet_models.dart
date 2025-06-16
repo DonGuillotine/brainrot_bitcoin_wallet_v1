@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:bdk_flutter/bdk_flutter.dart';
 
 /// Wallet configuration model
@@ -257,6 +256,51 @@ class BrainrotUtxo {
 
   /// Get value in BTC
   double get btc => value / 100000000;
+}
+
+/// Recent send address model
+class RecentSendAddress {
+  final String address;
+  final String? label;
+  final DateTime lastUsed;
+  final int usageCount;
+
+  RecentSendAddress({
+    required this.address,
+    this.label,
+    required this.lastUsed,
+    this.usageCount = 1,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'address': address,
+    'label': label,
+    'lastUsed': lastUsed.toIso8601String(),
+    'usageCount': usageCount,
+  };
+
+  factory RecentSendAddress.fromJson(Map<String, dynamic> json) {
+    return RecentSendAddress(
+      address: json['address'] as String,
+      label: json['label'] as String?,
+      lastUsed: DateTime.parse(json['lastUsed'] as String),
+      usageCount: json['usageCount'] as int? ?? 1,
+    );
+  }
+
+  RecentSendAddress copyWith({
+    String? address,
+    String? label,
+    DateTime? lastUsed,
+    int? usageCount,
+  }) {
+    return RecentSendAddress(
+      address: address ?? this.address,
+      label: label ?? this.label,
+      lastUsed: lastUsed ?? this.lastUsed,
+      usageCount: usageCount ?? this.usageCount,
+    );
+  }
 }
 
 /// Fee estimation model
