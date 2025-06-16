@@ -25,12 +25,29 @@ class FeeSelector extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final chaosLevel = themeProvider.chaosLevel;
 
+    // Ensure fee rates are unique by adding small increments if they're the same
+    final baseFees = [
+      feeEstimate.fastestFee,
+      feeEstimate.halfHourFee,
+      feeEstimate.hourFee,
+      feeEstimate.economyFee,
+    ];
+    
+    final uniqueFees = <int>[];
+    for (int i = 0; i < baseFees.length; i++) {
+      int feeRate = baseFees[i];
+      while (uniqueFees.contains(feeRate)) {
+        feeRate += 1; // Increment by 1 sat/vB if duplicate
+      }
+      uniqueFees.add(feeRate);
+    }
+
     final feeOptions = [
       FeeOption(
         name: 'YOLO MODE',
         description: 'Next block or die trying',
         emoji: '🚀',
-        feeRate: feeEstimate.fastestFee,
+        feeRate: uniqueFees[0],
         confirmationTime: '~10 minutes',
         color: AppTheme.error,
       ),
@@ -38,7 +55,7 @@ class FeeSelector extends StatelessWidget {
         name: 'Zoomer Speed',
         description: 'Pretty fast ngl',
         emoji: '⚡',
-        feeRate: feeEstimate.halfHourFee,
+        feeRate: uniqueFees[1],
         confirmationTime: '~30 minutes',
         color: AppTheme.warning,
       ),
@@ -46,7 +63,7 @@ class FeeSelector extends StatelessWidget {
         name: 'Normie Pace',
         description: 'Regular confirmation',
         emoji: '🚶',
-        feeRate: feeEstimate.hourFee,
+        feeRate: uniqueFees[2],
         confirmationTime: '~1 hour',
         color: AppTheme.limeGreen,
       ),
@@ -54,7 +71,7 @@ class FeeSelector extends StatelessWidget {
         name: 'Diamond Hands',
         description: 'I can wait forever',
         emoji: '💎',
-        feeRate: feeEstimate.economyFee,
+        feeRate: uniqueFees[3],
         confirmationTime: '2+ hours',
         color: AppTheme.deepPurple,
       ),
@@ -105,11 +122,13 @@ class FeeSelector extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          MemeText(
-                            option.name,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? option.color : Colors.white,
+                          Flexible(
+                            child: MemeText(
+                              option.name,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? option.color : Colors.white,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Container(

@@ -523,6 +523,51 @@ class LnurlPayData {
   int get maxCommentLength => commentAllowed ?? 0;
 }
 
+/// LNURL-withdraw data model
+class LnurlWithdrawData {
+  final String callback;
+  final String k1;
+  final int minWithdrawable;
+  final int maxWithdrawable;
+  final String defaultDescription;
+  final String tag;
+
+  LnurlWithdrawData({
+    required this.callback,
+    required this.k1,
+    required this.minWithdrawable,
+    required this.maxWithdrawable,
+    required this.defaultDescription,
+    required this.tag,
+  });
+
+  factory LnurlWithdrawData.fromJson(Map<String, dynamic> json) {
+    return LnurlWithdrawData(
+      callback: json['callback'] as String,
+      k1: json['k1'] as String,
+      minWithdrawable: json['minWithdrawable'] as int,
+      maxWithdrawable: json['maxWithdrawable'] as int,
+      defaultDescription: json['defaultDescription'] as String,
+      tag: json['tag'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'callback': callback,
+    'k1': k1,
+    'minWithdrawable': minWithdrawable,
+    'maxWithdrawable': maxWithdrawable,
+    'defaultDescription': defaultDescription,
+    'tag': tag,
+  };
+
+  /// Get minimum amount in sats
+  int get minWithdrawableSats => minWithdrawable ~/ 1000;
+
+  /// Get maximum amount in sats
+  int get maxWithdrawableSats => maxWithdrawable ~/ 1000;
+}
+
 /// Lightning backup data model
 class LightningBackup {
   final String nodeId;

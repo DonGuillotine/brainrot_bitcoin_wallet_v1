@@ -263,8 +263,16 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
     final walletProvider = context.read<WalletProvider>();
     final balance = walletProvider.balance?.confirmed ?? 0;
 
+    const int dustLimitSats = 546;
+
     if (_satAmount <= 0) {
       _showError('Enter an amount, anon! 💸');
+      return false;
+    }
+
+    // NEW: Dust limit check for on-chain transactions
+    if (!_isLightningInvoice && _satAmount < dustLimitSats) {
+      _showError('Amount is below the dust limit of $dustLimitSats sats! 🤏');
       return false;
     }
 
@@ -307,7 +315,7 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
     print('DEBUG: Address: ${_addressController.text.trim()}');
     print('DEBUG: Fee rate: $_selectedFeeRate');
 
-    final txid = await walletProvider.sendBitcoin(
+    String? txid = await walletProvider.sendBitcoin(
       address: _addressController.text.trim(),
       amountSats: _satAmount,
       feeRate: _selectedFeeRate,
@@ -315,6 +323,33 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
           ? _labelController.text.trim()
           : null,
     );
+
+    // Check if wallet needs to be unlocked
+    print('DEBUG: txid=$txid, isReadOnlyMode=${walletProvider.isReadOnlyMode}, error=${walletProvider.error}');
+    
+    if (txid == null && 
+        (walletProvider.isReadOnlyMode || 
+         (walletProvider.error != null && walletProvider.error!.contains('read-only mode')))) {
+      print('DEBUG: Showing password dialog...');
+      // Show password prompt
+      final password = await _showPasswordDialog();
+      if (password != null) {
+        print('DEBUG: Password provided, retrying transaction...');
+        // Retry transaction with password
+        txid = await walletProvider.sendBitcoin(
+          address: _addressController.text.trim(),
+          amountSats: _satAmount,
+          feeRate: _selectedFeeRate,
+          memo: _labelController.text.trim().isNotEmpty
+              ? _labelController.text.trim()
+              : null,
+          password: password,
+        );
+        print('DEBUG: Retry result: $txid');
+      } else {
+        print('DEBUG: No password provided, transaction cancelled');
+      }
+    }
 
     if (txid != null) {
       setState(() {
@@ -331,6 +366,78 @@ class _SendBitcoinScreenState extends State<SendBitcoinScreen>
         }
       });
     }
+  }
+
+  Future<String?> _showPasswordDialog() async {
+    final TextEditingController passwordController = TextEditingController();
+    
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.deepPurple,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: MemeText(
+            'Unlock Wallet 🔓',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.white,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              MemeText(
+                'Enter your wallet password to send this transaction:',
+                fontSize: 16,
+                color: Colors.white70,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Password',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: AppTheme.lightGrey,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.lock,
+                    color: AppTheme.white,
+                  ),
+                ),
+                autofocus: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: MemeText(
+                'Cancel',
+                color: Colors.white54,
+              ),
+            ),
+            ChaosButton(
+              text: 'Unlock',
+              onPressed: () {
+                final password = passwordController.text.trim();
+                if (password.isNotEmpty) {
+                  Navigator.of(context).pop(password);
+                }
+              }
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _sendLightningPayment() async {

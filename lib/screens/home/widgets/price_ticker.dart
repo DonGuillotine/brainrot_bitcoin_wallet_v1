@@ -18,11 +18,47 @@ class PriceTicker extends StatefulWidget {
 class _PriceTickerState extends State<PriceTicker> {
   PriceData? _currentPrice;
   PriceData? _previousPrice;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _initializePrice();
     _subscribeToPrice();
+  }
+
+  void _initializePrice() {
+    final settingsProvider = context.read<SettingsProvider>();
+    final currency = settingsProvider.fiatCurrency;
+    
+    // Try to get cached price first
+    final cachedPrice = services.priceService.getCurrentPrice(currency);
+    if (cachedPrice != null) {
+      setState(() {
+        _currentPrice = cachedPrice;
+      });
+    } else {
+      // If no cached price, fetch immediately
+      _fetchPriceData(currency);
+    }
+  }
+
+  Future<void> _fetchPriceData(String currency) async {
+    if (_isLoading) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      await services.priceService.fetchPrice(currency);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _subscribeToPrice() {
@@ -31,6 +67,7 @@ class _PriceTickerState extends State<PriceTicker> {
         setState(() {
           _previousPrice = _currentPrice;
           _currentPrice = priceData;
+          _isLoading = false;
         });
       }
     });
@@ -41,14 +78,50 @@ class _PriceTickerState extends State<PriceTicker> {
     final settingsProvider = context.watch<SettingsProvider>();
     final currency = settingsProvider.fiatCurrency;
 
+    if (_currentPrice == null && _isLoading) {
+      return Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.limeGreen),
+                strokeWidth: 2,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const MemeText(
+              'Loading price data...',
+              fontSize: 14,
+              color: Colors.white54,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show placeholder if no price data at all
     if (_currentPrice == null) {
       return Container(
         height: 60,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.limeGreen),
-          ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.currency_bitcoin,
+              color: AppTheme.limeGreen,
+              size: 32,
+            ),
+            const SizedBox(width: 12),
+            const MemeText(
+              'Price data unavailable',
+              fontSize: 16,
+              color: Colors.white54,
+            ),
+          ],
         ),
       );
     }
@@ -137,9 +210,18 @@ class _PriceTickerState extends State<PriceTicker> {
           IconButton(
             onPressed: () async {
               services.hapticService.light();
-              await services.priceService.fetchPrice(currency);
+              await _fetchPriceData(currency);
             },
-            icon: const Icon(Icons.refresh),
+            icon: _isLoading 
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(Icons.refresh),
             color: Colors.white54,
           ),
         ],

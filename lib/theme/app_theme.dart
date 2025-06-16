@@ -16,6 +16,7 @@ class AppTheme {
   static const Color lightGrey = Color(0xFF374151);
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
+  static const Color cyan = Color(0xFF00BCD4);
 
   // Semantic colors
   static const Color success = limeGreen;

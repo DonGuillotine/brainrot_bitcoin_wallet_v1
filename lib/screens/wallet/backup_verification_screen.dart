@@ -9,14 +9,15 @@ import '../../widgets/animated/meme_text.dart';
 import '../../widgets/effects/particle_system.dart';
 import '../../services/service_locator.dart';
 import '../../providers/app_state_provider.dart';
+import '../../main.dart';
 
 /// Backup verification screen to ensure user has saved seed phrase
 class BackupVerificationScreen extends StatefulWidget {
-  final String mnemonic;
+  final String? mnemonic;
 
   const BackupVerificationScreen({
     super.key,
-    required this.mnemonic,
+    this.mnemonic,
   });
 
   @override
@@ -24,16 +25,41 @@ class BackupVerificationScreen extends StatefulWidget {
 }
 
 class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
-  late List<String> _mnemonicWords;
+  List<String>? _mnemonicWords;
   late List<int> _verificationIndices;
   final Map<int, TextEditingController> _controllers = {};
   bool _verified = false;
+  bool _isLoading = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _mnemonicWords = widget.mnemonic.split(' ');
-    _generateVerificationIndices();
+    _initializeMnemonic();
+  }
+
+  Future<void> _initializeMnemonic() async {
+    if (widget.mnemonic != null) {
+      // Mnemonic provided directly
+      _mnemonicWords = widget.mnemonic!.split(' ');
+      _generateVerificationIndices();
+    } else {
+      // Load mnemonic from temporary storage
+      setState(() => _isLoading = true);
+      try {
+        final tempMnemonic = prefs.getString('temp_backup_mnemonic');
+        if (tempMnemonic != null) {
+          _mnemonicWords = tempMnemonic.split(' ');
+          _generateVerificationIndices();
+        } else {
+          setState(() => _error = 'No wallet backup found. Please restart wallet creation.');
+        }
+      } catch (e) {
+        setState(() => _error = 'Failed to load wallet backup: $e');
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -45,12 +71,14 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
   }
 
   void _generateVerificationIndices() {
+    if (_mnemonicWords == null) return;
+    
     final random = math.Random();
     final indices = <int>{};
 
     // Select 4 random word indices to verify
     while (indices.length < 4) {
-      indices.add(random.nextInt(_mnemonicWords.length));
+      indices.add(random.nextInt(_mnemonicWords!.length));
     }
 
     _verificationIndices = indices.toList()..sort();
@@ -62,11 +90,13 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
   }
 
   void _verifyBackup() async {
+    if (_mnemonicWords == null) return;
+    
     bool allCorrect = true;
 
     for (final index in _verificationIndices) {
       final userWord = _controllers[index]!.text.trim().toLowerCase();
-      final correctWord = _mnemonicWords[index].toLowerCase();
+      final correctWord = _mnemonicWords![index].toLowerCase();
 
       if (userWord != correctWord) {
         allCorrect = false;
@@ -85,6 +115,9 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
       await appState.setOnboarded(true);
       // Refresh app state to ensure hasWallet is properly set
       await appState.refreshAppState();
+
+      // Clean up temporary mnemonic storage
+      await prefs.remove('temp_backup_mnemonic');
 
       // Navigate to home after delay
       Future.delayed(const Duration(seconds: 2), () {
@@ -133,7 +166,59 @@ class _BackupVerificationScreenState extends State<BackupVerificationScreen> {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                if (!_verified) ...[
+                if (_isLoading) ...[
+                  // Loading state
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.limeGreen),
+                        ),
+                        const SizedBox(height: 16),
+                        MemeText(
+                          'Loading wallet backup...',
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (_error != null) ...[
+                  // Error state
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error,
+                          size: 64,
+                          color: AppTheme.error,
+                        ),
+                        const SizedBox(height: 16),
+                        MemeText(
+                          'Error',
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.error,
+                        ),
+                        const SizedBox(height: 8),
+                        MemeText(
+                          _error!,
+                          fontSize: 16,
+                          color: Colors.white70,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ChaosButton(
+                          text: 'Go Back',
+                          onPressed: () => context.go('/wallet/create'),
+                          isPrimary: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (!_verified && _mnemonicWords != null) ...[
                   // Instructions
                   Container(
                     padding: const EdgeInsets.all(16),

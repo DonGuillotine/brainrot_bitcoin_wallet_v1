@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import '../main.dart';
 import '../screens/lightning/channel_list_screen.dart';
 import '../screens/lightning/lightning_setup_screen.dart';
+import '../screens/lightning/open_channel_screen.dart';
+import '../screens/lightning/create_invoice_screen.dart';
+import '../screens/lightning/pay_invoice_screen.dart';
 import '../screens/scanner/qr_scanner_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
@@ -20,46 +23,70 @@ import '../screens/settings/settings_screen.dart';
 // Providers
 import '../providers/app_state_provider.dart';
 import '../theme/app_theme.dart';
+import '../main.dart';
 
 /// Main app router configuration
 class AppRouter {
-  static final router = GoRouter(
-    navigatorKey: navigatorKey,
-    initialLocation: '/',
-    debugLogDiagnostics: true,
+  static GoRouter createRouter(AppStateProvider appStateProvider) {
+    return GoRouter(
+      navigatorKey: navigatorKey,
+      initialLocation: '/',
+      debugLogDiagnostics: true,
+      refreshListenable: appStateProvider,
 
-    // Redirect logic for authentication
-    redirect: (context, state) {
-      final appState = context.read<AppStateProvider>();
+      // Redirect logic for authentication
+      redirect: (context, state) {
+      final appState = appStateProvider;
       final isOnboarding = state.matchedLocation == '/onboarding';
       final isCreatingWallet = state.matchedLocation.startsWith('/wallet/');
       final isHome = state.matchedLocation == '/home';
 
+      // Log routing decisions for debugging
+      logger.d('🗺️ Router redirect: location=${state.matchedLocation}, loading=${appState.isLoading}, hasWallet=${appState.hasWallet}, onboarded=${appState.isOnboarded}');
+
       // Skip redirects if app is still loading
       if (appState.isLoading) {
+        logger.d('🗺️ Skipping redirect - app still loading');
         return null;
       }
 
       // If onboarding completed and wallet exists, go to home from splash
       if (appState.isOnboarded && appState.hasWallet && state.matchedLocation == '/') {
+        logger.d('🗺️ Redirecting to /home - onboarded and has wallet');
         return '/home';
+      }
+
+      // If wallet exists but onboarding not completed, go to backup verification
+      if (!appState.isOnboarded && appState.hasWallet && state.matchedLocation == '/') {
+        logger.d('🗺️ Redirecting to /wallet/backup - has wallet but not onboarded');
+        return '/wallet/backup';
       }
 
       // If onboarding completed but no wallet and on splash, go to wallet creation
       if (appState.isOnboarded && !appState.hasWallet && state.matchedLocation == '/') {
+        logger.d('🗺️ Redirecting to /wallet/create - onboarded but no wallet');
         return '/wallet/create';
       }
 
       // If onboarding completed and wallet exists but user is trying to access onboarding, redirect to home
       if (appState.isOnboarded && appState.hasWallet && isOnboarding) {
+        logger.d('🗺️ Redirecting to /home - trying to access onboarding but already done');
         return '/home';
+      }
+
+      // If wallet exists but onboarding not completed and user is trying to access onboarding, redirect to backup verification
+      if (!appState.isOnboarded && appState.hasWallet && isOnboarding) {
+        logger.d('🗺️ Redirecting to /wallet/backup - trying to access onboarding but has wallet');
+        return '/wallet/backup';
       }
 
       // If onboarding not completed and not in onboarding/wallet creation flow, go to onboarding
       if (!appState.isOnboarded && !isOnboarding && !isCreatingWallet) {
+        logger.d('🗺️ Redirecting to /onboarding - not onboarded');
         return '/onboarding';
       }
 
+      logger.d('🗺️ No redirect needed');
       return null;
     },
 
@@ -121,13 +148,6 @@ class AppRouter {
             name: 'backup-verification',
             pageBuilder: (context, state) {
               final mnemonic = state.extra as String?;
-              if (mnemonic == null) {
-                return CustomTransitionPage(
-                  key: state.pageKey,
-                  child: const ErrorScreen(),
-                  transitionsBuilder: _chaosTransition,
-                );
-              }
 
               return CustomTransitionPage(
                 key: state.pageKey,
@@ -224,6 +244,36 @@ class AppRouter {
               transitionsBuilder: _slideUpTransition,
             ),
           ),
+          GoRoute(
+            path: 'open-channel',
+            name: 'open-channel',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const OpenChannelScreen(),
+              transitionsBuilder: _slideUpTransition,
+            ),
+          ),
+          GoRoute(
+            path: 'create-invoice',
+            name: 'create-invoice',
+            pageBuilder: (context, state) => CustomTransitionPage(
+              key: state.pageKey,
+              child: const CreateInvoiceScreen(),
+              transitionsBuilder: _slideUpTransition,
+            ),
+          ),
+          GoRoute(
+            path: 'pay-invoice',
+            name: 'pay-invoice',
+            pageBuilder: (context, state) {
+              final initialInvoice = state.extra as String?;
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: PayInvoiceScreen(initialInvoice: initialInvoice),
+                transitionsBuilder: _slideUpTransition,
+              );
+            },
+          ),
         ],
       ),
 
@@ -244,7 +294,8 @@ class AppRouter {
       child: const ErrorScreen(),
       transitionsBuilder: _chaosTransition,
     ),
-  );
+    );
+  }
 
   // Custom transition animations
   static Widget _chaosTransition(

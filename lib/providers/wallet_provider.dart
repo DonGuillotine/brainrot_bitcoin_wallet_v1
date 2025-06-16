@@ -32,6 +32,7 @@ class WalletProvider extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   bool get isLoading => _isLoading;
   bool get isSyncing => _isSyncing;
+  bool get isReadOnlyMode => _bdkService.isReadOnlyMode;
   String? get error => _error;
   WalletConfig? get walletConfig => _walletConfig;
   BrainrotBalance? get balance => _balance;
@@ -64,6 +65,62 @@ class WalletProvider extends ChangeNotifier {
     services.storageService,
   ) {
     _setupListeners();
+    // Don't auto-initialize in constructor, wait for explicit call
+  }
+
+  /// Auto-initialize wallet if one exists and app is ready
+  Future<void> autoInitializeIfNeeded() async {
+    try {
+      logger.d('🔄 Checking if wallet auto-initialization is needed...');
+      
+      // Check if wallet exists in storage
+      final hasWallet = await secureStorage.containsKey(key: 'wallet_mnemonic');
+      final isOnboarded = prefs.getBool('is_onboarded') ?? false;
+      
+      logger.d('🔄 Auto-init check: hasWallet=$hasWallet, isOnboarded=$isOnboarded, isInitialized=$_isInitialized');
+      
+      if (hasWallet && isOnboarded && !_isInitialized) {
+        logger.i('✅ Auto-initializing wallet for read-only operations...');
+        await autoInitializeWallet();
+        logger.i('🎉 Wallet auto-initialization complete!');
+      } else {
+        logger.d('⏭️ Skipping wallet auto-initialization');
+      }
+    } catch (e) {
+      logger.e('❌ Auto-initialization failed', error: e);
+    }
+  }
+
+  /// Auto-initialize wallet for read-only operations
+  Future<void> autoInitializeWallet() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final result = await _bdkService.autoInitializeWallet();
+
+      if (result.isSuccess) {
+        _walletConfig = _bdkService.walletConfig;
+        _addresses = _bdkService.addresses;
+        _transactions = _bdkService.transactions;
+        _isInitialized = true;
+
+        // Get current receive address
+        await _updateReceiveAddress();
+
+        // Load recent addresses
+        await _loadRecentSendAddresses();
+
+        logger.i('Wallet auto-initialized successfully! 🔍');
+      } else {
+        _setError(result.errorOrNull!.toMemeMessage());
+      }
+    } catch (e) {
+      _setError('Failed to auto-initialize wallet: $e');
+      logger.e('Wallet auto-initialization failed', error: e);
+    } finally {
+      _setLoading(false);
+    }
   }
 
   /// Setup stream listeners
@@ -246,39 +303,82 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
+  /// Unlock wallet for signing operations
+  Future<bool> unlockWallet(String password) async {
+    final result = await _bdkService.unlockWallet(password);
+    if (result.isError) {
+      _setError('Failed to unlock wallet: ${result.errorOrNull?.message}');
+      return false;
+    }
+    return true;
+  }
+
   /// Send Bitcoin
   Future<String?> sendBitcoin({
     required String address,
     required int amountSats,
     required int feeRate,
     String? memo,
+    String? password,
   }) async {
     if (!_isInitialized) return null;
 
     _setLoading(true);
     _clearError();
 
+    // The dust limit for a P2WPKH output (the most common type) is 546 sats.
+    // Safeguard to prevent the OutputBelowDustLimitException crash.
+    const int dustLimitSats = 546;
+
     try {
+      logger.d('Starting sendBitcoin flow...');
+      
+      // Unlock wallet if password is provided
+      if (password != null) {
+        logger.d('Password provided, unlocking wallet...');
+        final unlocked = await unlockWallet(password);
+        if (!unlocked) {
+          logger.e('Failed to unlock wallet');
+          return null; // Error already set in unlockWallet
+        }
+        logger.d('Wallet unlocked successfully');
+      }
+
       // Validate address first
+      logger.d('Validating address...');
       final validResult = await _bdkService.validateAddress(address);
       if (validResult.isError || !validResult.valueOrNull!) {
+        logger.e('Address validation failed');
         _setError('Invalid Bitcoin address! That ain\'t it chief 🤨');
+        return null;
+      }
+      logger.d('Address validation passed');
+
+      // NEW: Safeguard check for the dust limit
+      if (amountSats < dustLimitSats) {
+        logger.e('Amount below dust limit');
+        _setError('Amount is below the dust limit of $dustLimitSats sats! 🤏');
         return null;
       }
 
       // Check balance
+      logger.d('Checking balance...');
       if (_balance == null || amountSats > _balance!.confirmed) {
+        logger.e('Insufficient funds: $_balance?.confirmed vs $amountSats');
         _setError('Insufficient funds! You broke boi 💸');
         return null;
       }
+      logger.d('Balance check passed');
 
       // Create and broadcast transaction
+      logger.d('Creating transaction...');
       final result = await _bdkService.createTransaction(
         recipientAddress: address,
         amountSats: amountSats,
         feeRate: feeRate,
         memo: memo,
       );
+      logger.d('Transaction creation completed with result: ${result.isSuccess}');
 
       if (result.isSuccess) {
         logger.i('Transaction sent! TXID: ${result.valueOrNull}');
@@ -292,7 +392,14 @@ class WalletProvider extends ChangeNotifier {
 
         return result.valueOrNull;
       } else {
-        _setError(result.errorOrNull!.toMemeMessage());
+        // Handle specific errors more gracefully
+        final errorMessage = result.errorOrNull?.message ?? 'An unknown error occurred.';
+        logger.e('Transaction failed: $errorMessage');
+        if (errorMessage.contains('OutputBelowDustLimitException')) {
+          _setError('Send amount is too small (below dust limit).');
+        } else {
+          _setError(result.errorOrNull!.toMemeMessage());
+        }
         return null;
       }
     } catch (e) {
@@ -300,6 +407,7 @@ class WalletProvider extends ChangeNotifier {
       logger.e('Send transaction failed', error: e);
       return null;
     } finally {
+      logger.d('sendBitcoin completed, setting loading to false');
       _setLoading(false);
     }
   }

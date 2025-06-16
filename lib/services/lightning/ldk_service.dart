@@ -581,6 +581,67 @@ class LdkService extends BaseService {
     );
   }
 
+  /// Process LNURL-withdraw request
+  Future<ServiceResult<String>> processLnurlWithdraw({
+    required String lnurlWithdraw,
+    required int amountSats,
+    String? description,
+  }) async {
+    return executeOperation(
+      operation: () async {
+        logInfo('💰 Starting LNURL-withdraw processing...');
+
+        // Step 1: Decode LNURL and query endpoint
+        final lnurlResult = await _queryLnurlWithdrawEndpoint(lnurlWithdraw);
+        if (lnurlResult.isError) {
+          final serviceError = lnurlResult as ServiceError;
+          throw serviceError.error;
+        }
+
+        final lnurlData = lnurlResult.valueOrNull!;
+        logInfo('📡 LNURL-withdraw data received');
+
+        // Step 2: Validate amount is within limits
+        final amountMsat = amountSats * 1000;
+        if (amountMsat < lnurlData.minWithdrawable || amountMsat > lnurlData.maxWithdrawable) {
+          throw ServiceException(
+            message: 'Amount not supported. Min: ${lnurlData.minWithdrawableSats} sats, Max: ${lnurlData.maxWithdrawableSats} sats',
+            code: ErrorCodes.invalidAmount,
+          );
+        }
+
+        // Step 3: Create an invoice to receive the withdrawal
+        final invoiceResult = await createInvoice(
+          amountSats: amountSats,
+          description: description ?? lnurlData.defaultDescription,
+        );
+        if (invoiceResult.isError) {
+          final serviceError = invoiceResult as ServiceError;
+          throw serviceError.error;
+        }
+
+        final invoice = invoiceResult.valueOrNull!;
+        logInfo('📄 Invoice created for withdrawal');
+
+        // Step 4: Submit withdrawal request
+        final withdrawResult = await _submitLnurlWithdraw(
+          lnurlData.callback,
+          lnurlData.k1,
+          invoice.bolt11,
+        );
+        if (withdrawResult.isError) {
+          final serviceError = withdrawResult as ServiceError;
+          throw serviceError.error;
+        }
+
+        logInfo('✅ LNURL-withdraw processed successfully');
+        return invoice.paymentHash ?? invoice.bolt11.hashCode.toString();
+      },
+      operationName: 'process LNURL-withdraw',
+      errorCode: ErrorCodes.lightningError,
+    );
+  }
+
   /// Query LNURL-pay endpoint for payment details
   Future<ServiceResult<LnurlPayData>> _queryLnurlPayEndpoint(String domain, String username) async {
     return executeOperation(
@@ -681,6 +742,112 @@ class LdkService extends BaseService {
         return bolt11;
       },
       operationName: 'request LNURL invoice',
+    );
+  }
+
+  /// Query LNURL-withdraw endpoint
+  Future<ServiceResult<LnurlWithdrawData>> _queryLnurlWithdrawEndpoint(String lnurl) async {
+    return executeOperation(
+      operation: () async {
+        // Decode LNURL (simplified - in production you'd use proper bech32 decoding)
+        String url;
+        if (lnurl.toLowerCase().startsWith('lnurl')) {
+          // For now, assume it's already a URL or needs simple decoding
+          // In production, implement proper LNURL bech32 decoding
+          url = lnurl;
+        } else {
+          url = lnurl;
+        }
+
+        final response = await _networkService.get<Map<String, dynamic>>(
+          url: url,
+          options: Options(
+            sendTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+          ),
+        );
+
+        if (response.isError) {
+          final serviceError = response as ServiceError;
+          throw ServiceException(
+            message: 'Failed to fetch LNURL-withdraw data: ${serviceError.error.message}',
+            code: ErrorCodes.networkError,
+          );
+        }
+
+        final data = response.valueOrNull!;
+
+        // Check for LNURL error response
+        if (data['status'] == 'ERROR') {
+          throw ServiceException(
+            message: data['reason'] ?? 'LNURL-withdraw error',
+            code: ErrorCodes.lightningError,
+          );
+        }
+
+        // Validate required fields
+        if (data['tag'] != 'withdrawRequest') {
+          throw ServiceException(
+            message: 'Invalid LNURL response: wrong tag',
+            code: ErrorCodes.lightningError,
+          );
+        }
+
+        return LnurlWithdrawData.fromJson(data);
+      },
+      operationName: 'query LNURL-withdraw endpoint',
+    );
+  }
+
+  /// Submit LNURL-withdraw request
+  Future<ServiceResult<void>> _submitLnurlWithdraw(
+    String callbackUrl,
+    String k1,
+    String invoice,
+  ) async {
+    return executeOperation(
+      operation: () async {
+        final queryParams = <String, String>{
+          'k1': k1,
+          'pr': invoice,
+        };
+
+        final response = await _networkService.get<Map<String, dynamic>>(
+          url: callbackUrl,
+          queryParameters: queryParams,
+          options: Options(
+            sendTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 15),
+          ),
+        );
+
+        if (response.isError) {
+          final serviceError = response as ServiceError;
+          throw ServiceException(
+            message: 'Failed to submit withdrawal: ${serviceError.error.message}',
+            code: ErrorCodes.networkError,
+          );
+        }
+
+        final data = response.valueOrNull!;
+
+        // Check for error response
+        if (data['status'] == 'ERROR') {
+          throw ServiceException(
+            message: data['reason'] ?? 'Withdrawal submission failed',
+            code: ErrorCodes.lightningError,
+          );
+        }
+
+        // Success if status is OK or not present
+        if (data['status'] != null && data['status'] != 'OK') {
+          throw ServiceException(
+            message: 'Unexpected response status: ${data['status']}',
+            code: ErrorCodes.lightningError,
+          );
+        }
+      },
+      operationName: 'submit LNURL-withdraw',
     );
   }
 
