@@ -137,11 +137,16 @@ class AppRouter {
           GoRoute(
             path: 'send',
             name: 'send',
-            pageBuilder: (context, state) => CustomTransitionPage(
-              key: state.pageKey,
-              child: const SendBitcoinScreen(),
-              transitionsBuilder: _slideUpTransition,
-            ),
+            pageBuilder: (context, state) {
+              // Check if we have scan data
+              final scanData = state.extra as String?;
+
+              return CustomTransitionPage(
+                key: state.pageKey,
+                child: SendBitcoinScreen(scanData: scanData),
+                transitionsBuilder: _slideUpTransition,
+              );
+            },
           ),
 
           // Receive Bitcoin

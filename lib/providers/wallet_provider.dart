@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:bdk_flutter/bdk_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/bitcoin/bdk_service.dart';
 import '../services/service_locator.dart';
 import '../models/wallet_models.dart';
@@ -24,6 +26,7 @@ class WalletProvider extends ChangeNotifier {
   List<BrainrotTransaction> _transactions = [];
   List<BrainrotAddress> _addresses = [];
   BrainrotAddress? _currentReceiveAddress;
+  List<RecentSendAddress> _recentSendAddresses = [];
 
   // Getters
   bool get isInitialized => _isInitialized;
@@ -36,6 +39,7 @@ class WalletProvider extends ChangeNotifier {
   List<BrainrotAddress> get addresses => _addresses;
   BrainrotAddress? get currentReceiveAddress => _currentReceiveAddress;
   int? get currentBlockHeight => _currentBlockHeight;
+  List<RecentSendAddress> get recentSendAddresses => _recentSendAddresses;
 
   // Computed getters
   String get balanceDisplay {
@@ -106,6 +110,9 @@ class WalletProvider extends ChangeNotifier {
         // Get current receive address
         await _updateReceiveAddress();
 
+        // Load recent addresses
+        await _loadRecentSendAddresses();
+
         logger.i('Wallet initialized! LFG! 🚀');
       } else {
         _setError(result.errorOrNull!.toMemeMessage());
@@ -142,6 +149,9 @@ class WalletProvider extends ChangeNotifier {
 
         // Get initial receive address
         await _updateReceiveAddress();
+
+        // Load recent addresses
+        await _loadRecentSendAddresses();
 
         logger.i('New wallet created! WAGMI! 💎');
 
@@ -183,6 +193,9 @@ class WalletProvider extends ChangeNotifier {
       if (result.isSuccess) {
         _walletConfig = _bdkService.walletConfig;
         _isInitialized = true;
+
+        // Load recent addresses
+        await _loadRecentSendAddresses();
 
         logger.i('Wallet restored! We\'re back! 🎉');
         return true;
@@ -270,6 +283,9 @@ class WalletProvider extends ChangeNotifier {
       if (result.isSuccess) {
         logger.i('Transaction sent! TXID: ${result.valueOrNull}');
 
+        // Save to recent addresses
+        await _saveRecentSendAddress(address, memo);
+
         // Play sound and haptic
         await services.soundService.sendTransaction();
         await services.hapticService.transaction();
@@ -353,6 +369,81 @@ class WalletProvider extends ChangeNotifier {
 
   void _clearError() {
     _error = null;
+  }
+
+  /// Load recent send addresses from storage
+  Future<void> _loadRecentSendAddresses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recentJson = prefs.getStringList('recent_send_addresses') ?? [];
+      
+      _recentSendAddresses = recentJson
+          .map((json) => RecentSendAddress.fromJson(jsonDecode(json)))
+          .toList();
+      
+      // Sort by last used (most recent first)
+      _recentSendAddresses.sort((a, b) => b.lastUsed.compareTo(a.lastUsed));
+      
+      // Keep only last 10 addresses
+      if (_recentSendAddresses.length > 10) {
+        _recentSendAddresses = _recentSendAddresses.take(10).toList();
+        await _saveRecentSendAddressesToStorage();
+      }
+    } catch (e) {
+      logger.e('Error loading recent addresses', error: e);
+      _recentSendAddresses = [];
+    }
+  }
+
+  /// Save recent send address
+  Future<void> _saveRecentSendAddress(String address, String? label) async {
+    try {
+      // Check if address already exists
+      final existingIndex = _recentSendAddresses.indexWhere((a) => a.address == address);
+      
+      if (existingIndex >= 0) {
+        // Update existing address
+        final existing = _recentSendAddresses[existingIndex];
+        _recentSendAddresses[existingIndex] = existing.copyWith(
+          lastUsed: DateTime.now(),
+          usageCount: existing.usageCount + 1,
+          label: label?.isNotEmpty == true ? label : existing.label,
+        );
+      } else {
+        // Add new address
+        _recentSendAddresses.insert(0, RecentSendAddress(
+          address: address,
+          label: label?.isNotEmpty == true ? label : null,
+          lastUsed: DateTime.now(),
+        ));
+      }
+      
+      // Sort by last used
+      _recentSendAddresses.sort((a, b) => b.lastUsed.compareTo(a.lastUsed));
+      
+      // Keep only last 10
+      if (_recentSendAddresses.length > 10) {
+        _recentSendAddresses = _recentSendAddresses.take(10).toList();
+      }
+      
+      await _saveRecentSendAddressesToStorage();
+      notifyListeners();
+    } catch (e) {
+      logger.e('Error saving recent address', error: e);
+    }
+  }
+
+  /// Save recent addresses to storage
+  Future<void> _saveRecentSendAddressesToStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recentJson = _recentSendAddresses
+          .map((addr) => jsonEncode(addr.toJson()))
+          .toList();
+      await prefs.setStringList('recent_send_addresses', recentJson);
+    } catch (e) {
+      logger.e('Error saving recent addresses to storage', error: e);
+    }
   }
 
   @override
